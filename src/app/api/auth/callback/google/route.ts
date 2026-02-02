@@ -22,15 +22,19 @@ export async function GET(req: NextRequest) {
     !storedCodeVerifier ||
     state !== storedState
   ) {
-    return new Response(null, { status: 400 });
+    return new Response(JSON.stringify({ error: "Invalid OAuth state" }), {
+      status: 400,
+    });
   }
 
   try {
+    // 🔹 Validate Google authorization code
     const tokens = await google.validateAuthorizationCode(
       code,
-      storedCodeVerifier,
+      storedCodeVerifier
     );
 
+    // 🔹 Get user info from Google
     const googleUser = await kyInstance
       .get("https://www.googleapis.com/oauth2/v1/userinfo", {
         headers: {
@@ -39,34 +43,17 @@ export async function GET(req: NextRequest) {
       })
       .json<{ id: string; name: string }>();
 
-    const existingUser = await prisma.user.findUnique({
-      where: {
-        googleId: googleUser.id,
-      },
+    // 🔹 Check if user already exists
+    let user = await prisma.user.findUnique({
+      where: { googleId: googleUser.id },
     });
 
-    if (existingUser) {
-      const session = await lucia.createSession(existingUser.id, {});
-      const sessionCookie = lucia.createSessionCookie(session.id);
-      cookies().set(
-        sessionCookie.name,
-        sessionCookie.value,
-        sessionCookie.attributes,
-      );
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: "/",
-        },
-      });
-    }
+    // 🔹 If not, create them
+    if (!user) {
+      const userId = generateIdFromEntropySize(10);
+      const username = slugify(googleUser.name) + "-" + userId.slice(0, 4);
 
-    const userId = generateIdFromEntropySize(10);
-
-    const username = slugify(googleUser.name) + "-" + userId.slice(0, 4);
-
-    await prisma.$transaction(async (tx) => {
-      await tx.user.create({
+      const newUser = await prisma.user.create({
         data: {
           id: userId,
           username,
@@ -74,35 +61,54 @@ export async function GET(req: NextRequest) {
           googleId: googleUser.id,
         },
       });
+
       await streamServerClient.upsertUser({
         id: userId,
+        name: googleUser.name,
         username,
-        name: username,
       });
-    });
 
-    const session = await lucia.createSession(userId, {});
+      user = newUser;
+    }
+
+    // 🔹 Create Stream token for the user
+    const streamToken = streamServerClient.createToken(user.id);
+
+    // 🔹 Create a Lucia session and cookie
+    const session = await lucia.createSession(user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
-      sessionCookie.attributes,
+      sessionCookie.attributes
     );
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: "/",
-      },
-    });
+    // 🔹 Respond with user info + Stream token
+    return new Response(
+      JSON.stringify({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.displayName,
+          username: user.username,
+        },
+        streamToken,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
-    console.error(error);
+    console.error("OAuth callback error:", error);
+
     if (error instanceof OAuth2RequestError) {
-      return new Response(null, {
+      return new Response(JSON.stringify({ error: "OAuth2 request failed" }), {
         status: 400,
       });
     }
-    return new Response(null, {
+
+    return new Response(JSON.stringify({ error: "Server error" }), {
       status: 500,
     });
   }

@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chat as StreamChat } from "stream-chat-react";
 import ChatChannel from "./ChatChannel";
 import ChatSidebar from "./ChatSidebar";
@@ -10,18 +10,24 @@ import useInitializeChatClient from "./useInitializeChatClient";
 
 export default function Chat() {
   const chatClient = useInitializeChatClient();
-
   const { resolvedTheme } = useTheme();
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!chatClient) {
-    return <Loader2 className="mx-auto my-3 animate-spin" />;
+  // Wait until client mount so theme and chatClient are synced
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || !chatClient || !resolvedTheme) {
+    return (
+      <div className="flex items-center justify-center w-full h-full py-10">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
   }
 
   return (
     <main className="relative w-full overflow-hidden rounded-2xl bg-card shadow-sm">
-      <div className="absolute bottom-0 top-0 flex w-full">
+      <div className="absolute inset-0 flex w-full">
         <StreamChat
           client={chatClient}
           theme={

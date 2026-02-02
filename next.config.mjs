@@ -5,7 +5,20 @@ const nextConfig = {
       dynamic: 30,
     },
   },
-  serverExternalPackages: ["@node-rs/argon2"],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('argon2');
+      config.externals.push('@node-rs/argon2');
+    }
+    // Prevent stream-chat from being bundled on client side
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'stream-chat': false,
+      };
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {

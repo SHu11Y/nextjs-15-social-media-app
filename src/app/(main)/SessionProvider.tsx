@@ -1,24 +1,36 @@
+// src/app/(main)/SessionProvider.tsx
 "use client";
+import React, { createContext, useContext, useState, ReactNode } from "react";
 
-import { Session, User } from "lucia";
-import React, { createContext, useContext } from "react";
-
-interface SessionContext {
-  user: User;
-  session: Session;
+interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
 }
 
-const SessionContext = createContext<SessionContext | null>(null);
+interface SessionContextType {
+  user: User | null;
+  setUser: (user: User | null) => void;
+}
 
-export default function SessionProvider({
-  children,
-  value,
-}: React.PropsWithChildren<{ value: SessionContext }>) {
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
+
+interface SessionProviderProps {
+  children: ReactNode;
+}
+
+export default function SessionProvider({ children }: SessionProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+
   return (
-    <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
+    <SessionContext.Provider value={{ user, setUser }}>
+      {children}
+    </SessionContext.Provider>
   );
 }
 
+// Custom hook for consuming session
 export function useSession() {
   const context = useContext(SessionContext);
   if (!context) {

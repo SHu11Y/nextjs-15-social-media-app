@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import type { Metadata } from "next";
@@ -7,6 +8,7 @@ import { extractRouterConfig } from "uploadthing/server";
 import { fileRouter } from "./api/uploadthing/core";
 import "./globals.css";
 import ReactQueryProvider from "./ReactQueryProvider";
+import SessionProvider from "./(main)/SessionProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -27,13 +29,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable}`}
+        suppressHydrationWarning
+      >
         <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
+
         <ReactQueryProvider>
           <ThemeProvider
             attribute="class"
@@ -41,9 +47,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <SessionProvider>{children}</SessionProvider>
           </ThemeProvider>
         </ReactQueryProvider>
+
         <Toaster />
       </body>
     </html>

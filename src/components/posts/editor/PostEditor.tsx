@@ -1,5 +1,4 @@
 "use client";
-
 import { useSession } from "@/app/(main)/SessionProvider";
 import LoadingButton from "@/components/LoadingButton";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,11 @@ import useMediaUpload, { Attachment } from "./useMediaUpload";
 
 export default function PostEditor() {
   const { user } = useSession();
+
+  // Add this null check
+  if (!user) {
+    return null;
+  }
 
   const mutation = useSubmitPostMutation();
 

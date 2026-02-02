@@ -1,7 +1,7 @@
 import { validateRequest } from "@/auth";
 import { Button } from "@/components/ui/button";
 import prisma from "@/lib/prisma";
-import streamServerClient from "@/lib/stream";
+// import streamServerClient from "@/lib/stream"; // Temporarily disabled
 import { Bookmark, Home } from "lucide-react";
 import Link from "next/link";
 import MessagesButton from "./MessagesButton";
@@ -23,7 +23,10 @@ export default async function MenuBar({ className }: MenuBarProps) {
         read: false,
       },
     }),
-    (await streamServerClient.getUnreadCount(user.id)).total_unread_count,
+    // TODO: Fix Stream Chat configuration
+    // Temporarily return 0 for unread messages count
+    Promise.resolve(0),
+    // (await streamServerClient.getUnreadCount(user.id)).total_unread_count,
   ]);
 
   return (

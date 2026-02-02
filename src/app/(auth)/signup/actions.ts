@@ -2,9 +2,9 @@
 
 import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
-import streamServerClient from "@/lib/stream";
+// import streamServerClient from "@/lib/stream"; // Temporarily disabled
 import { signUpSchema, SignUpValues } from "@/lib/validation";
-import { hash } from "@node-rs/argon2";
+import argon2 from "argon2";
 import { generateIdFromEntropySize } from "lucia";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { cookies } from "next/headers";
@@ -15,14 +15,9 @@ export async function signUp(
 ): Promise<{ error: string }> {
   try {
     const { username, email, password } = signUpSchema.parse(credentials);
-
-    const passwordHash = await hash(password, {
-      memoryCost: 19456,
-      timeCost: 2,
-      outputLen: 32,
-      parallelism: 1,
-    });
-
+    
+    const passwordHash = await argon2.hash(password);
+    
     const userId = generateIdFromEntropySize(10);
 
     const existingUsername = await prisma.user.findFirst({
@@ -65,11 +60,14 @@ export async function signUp(
           passwordHash,
         },
       });
-      await streamServerClient.upsertUser({
-        id: userId,
-        username,
-        name: username,
-      });
+      
+      // TODO: Fix Stream Chat server client bundling issue
+      // Temporarily disabled - users will be created in Stream Chat later
+      // await streamServerClient.upsertUser({
+      //   id: userId,
+      //   username,
+      //   name: username,
+      // });
     });
 
     const session = await lucia.createSession(userId, {});
@@ -79,7 +77,7 @@ export async function signUp(
       sessionCookie.value,
       sessionCookie.attributes,
     );
-
+    
     return redirect("/");
   } catch (error) {
     if (isRedirectError(error)) throw error;

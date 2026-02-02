@@ -1,6 +1,4 @@
 "use client";
-
-import { logout } from "@/app/(auth)/actions";
 import { useSession } from "@/app/(main)/SessionProvider";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,10 +25,22 @@ interface UserButtonProps {
 
 export default function UserButton({ className }: UserButtonProps) {
   const { user } = useSession();
-
   const { theme, setTheme } = useTheme();
-
   const queryClient = useQueryClient();
+  // Add this null check
+  if (!user) {
+    return null;
+  }
+
+  const handleLogout = async () => {
+    queryClient.clear();
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -74,12 +84,7 @@ export default function UserButton({ className }: UserButtonProps) {
           </DropdownMenuPortal>
         </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => {
-            queryClient.clear();
-            logout();
-          }}
-        >
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOutIcon className="mr-2 size-4" />
           Logout
         </DropdownMenuItem>
